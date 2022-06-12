@@ -18,6 +18,7 @@ class Speller
 	const LANGUAGE_SPANISH = Language::SPANISH;
 	const LANGUAGE_POLISH = Language::POLISH;
 	const LANGUAGE_ITALIAN = Language::ITALIAN;
+	const LANGUAGE_SWAHILI = Language::SWAHILI;
 
 	const CURRENCY_EURO = 'EUR';
 	const CURRENCY_BRITISH_POUND = 'GBP';
@@ -114,30 +115,29 @@ class Speller
 	 * @return string The currency as written in words in the specified language.
 	 * @throws exceptions\SpellerException If any parameter is invalid.
 	 */
-	public static function spellCurrency($amount, string $language, string $currency, bool $requireDecimal = true, bool $spellDecimal = false): string
+	public static function spellCurrency($amount, string $language, string $currency, bool $requireDecimal = true, bool $spellDecimal = false, $startWithCurrency = false): string
 	{
 		self::validateNumber($amount);
 		self::validateCurrency($currency);
-		
+
 		$amount = number_format($amount, 2, '.', ''); // ensure decimal is always 2 digits
 		[$wholeAmount, $decimalAmount] = array_map('intval', explode('.', $amount));
 		
 		$speller = new self($language);
 		
-		$text = trim($speller->language->spellNumber($wholeAmount, false, $currency))
-			. ' '
-			. $speller->language->getCurrencyNameMajor($wholeAmount, $currency);
+		$amount = trim($speller->language->spellNumber($wholeAmount, false, $currency));
+		$text = $startWithCurrency ? 
+			$speller->language->getCurrencyNameMajor($wholeAmount, $currency) . ' ' . $amount 
+			: $amount . ' ' . $speller->language->getCurrencyNameMajor($wholeAmount, $currency);
 		
 		if ($requireDecimal || ($decimalAmount > 0))
 		{
+			$amount = $spellDecimal ? trim($speller->language->spellNumber($decimalAmount, true, $currency)) : $decimalAmount;
+			$nameMinor = $speller->language->getCurrencyNameMinor($decimalAmount, $currency);
 			$text .= ' '
 				. $speller->language->spellMinorUnitSeparator()
 				. ' '
-				. ($spellDecimal
-					? trim($speller->language->spellNumber($decimalAmount, true, $currency))
-					: $decimalAmount)
-				. ' '
-				. $speller->language->getCurrencyNameMinor($decimalAmount, $currency);
+				. ($startWithCurrency ? $nameMinor . ' ' . $amount : $amount . ' ' . $nameMinor);
 		}
 		
 		return $text;
